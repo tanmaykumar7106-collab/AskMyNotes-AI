@@ -1,45 +1,89 @@
-import os
 import streamlit as st
+from pathlib import Path
 
-from utils.pdf_loader import load_pdf
+from config import APP_NAME
+
+# ==========================================
+# Page Configuration
+# ==========================================
 
 st.set_page_config(
-    page_title="Ask My Notes",
+    page_title="AskMyNotes AI",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("📚 Ask My Notes")
+# ==========================================
+# Session State
+# ==========================================
 
-uploaded_file = st.file_uploader(
-    "Upload your PDF",
-    type=["pdf"]
-)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if uploaded_file:
+if "documents" not in st.session_state:
+    st.session_state.documents = []
 
-    os.makedirs("temp", exist_ok=True)
+if "db_ready" not in st.session_state:
+    st.session_state.db_ready = False
 
-    pdf_path = os.path.join(
-        "temp",
-        uploaded_file.name
+# ==========================================
+# Sidebar
+# ==========================================
+
+with st.sidebar:
+
+    st.title("📚 AskMyNotes AI")
+
+    st.divider()
+
+    uploaded_files = st.file_uploader(
+        "Upload PDF(s)",
+        type=["pdf"],
+        accept_multiple_files=True
     )
 
-    with open(pdf_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    st.divider()
 
-    documents = load_pdf(pdf_path)
+    st.subheader("📄 Uploaded Documents")
 
-    st.success(
-        f"Successfully loaded {len(documents)} pages."
+    if len(st.session_state.documents) == 0:
+        st.info("No documents uploaded.")
+
+    else:
+        for doc in st.session_state.documents:
+            st.success(doc)
+
+    st.divider()
+
+    st.subheader("⚙ Settings")
+
+    model = st.selectbox(
+        "Ollama Model",
+        [
+            "llama3",
+            "mistral",
+            "gemma3"
+        ]
     )
 
-    with st.expander("Preview Pages"):
+# ==========================================
+# Main Page
+# ==========================================
 
-        for i, doc in enumerate(documents):
+st.title(APP_NAME)
 
-            st.markdown(f"### Page {i+1}")
+st.caption("Offline RAG powered by Ollama + ChromaDB")
 
-            st.write(doc.page_content[:500])
+st.divider()
 
-            st.divider()
+# Chat Messages
+
+for message in st.session_state.messages:
+
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat Input
+
+question = st.chat_input("Ask anything about your documents...")
